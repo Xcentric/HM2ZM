@@ -35,7 +35,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.Callable;
 
-@Command(name = "convert")
+@Command(name = "HM2ZM", version = "HM2ZM v1.0", description = "Convert HomeMoney CSV to ZenMoney CSV.", mixinStandardHelpOptions = true)
 public final class ConvertCommand implements Callable<Integer> {
 
     private static class BlankColumnsToNullProcessor implements RowProcessor {
