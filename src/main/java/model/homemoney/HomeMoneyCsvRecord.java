@@ -36,10 +36,12 @@ public final class HomeMoneyCsvRecord extends CsvRecord {
 
     @Override
     public boolean equals(Object obj) {
-        if (this == obj)
+        if (this == obj) {
             return true;
-        if (!(obj instanceof HomeMoneyCsvRecord))
+        }
+        if (!(obj instanceof HomeMoneyCsvRecord)) {
             return false;
+        }
 
         HomeMoneyCsvRecord that = (HomeMoneyCsvRecord) obj;
 

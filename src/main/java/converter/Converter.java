@@ -34,7 +34,8 @@ public final class Converter {
         return converted;
     }
 
-    public static ZenMoneyCsvRecord convertRecord(HomeMoneyCsvRecord transferRecord1, HomeMoneyCsvRecord transferRecord2) {
+    public static ZenMoneyCsvRecord convertRecord(HomeMoneyCsvRecord transferRecord1,
+                                                  HomeMoneyCsvRecord transferRecord2) {
         if (transferRecord1 == null || !transferRecord1.isTransfer() || transferRecord1.getTotal().signum() != -1) {
             throw new IllegalArgumentException("transferRecord1 == " + transferRecord1);
         }
@@ -42,7 +43,8 @@ public final class Converter {
             throw new IllegalArgumentException("transferRecord2 == " + transferRecord2);
         }
         if (!transferRecord2.getAccount().equals(transferRecord1.getTransfer())) {
-            throw new IllegalArgumentException("transferRecord1 == " + transferRecord1 + "; transferRecord2 == " + transferRecord2);
+            throw new IllegalArgumentException(
+                    "transferRecord1 == " + transferRecord1 + "; transferRecord2 == " + transferRecord2);
         }
 
         ZenMoneyCsvRecord converted = new ZenMoneyCsvRecord();

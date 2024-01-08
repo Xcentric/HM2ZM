@@ -36,7 +36,8 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.Callable;
 
-@Command(name = "HM2ZM", version = "HM2ZM v1.0", description = "Convert HomeMoney CSV to ZenMoney CSV.", mixinStandardHelpOptions = true)
+@Command(name = "HM2ZM", version = "HM2ZM v1.0", description = "Convert HomeMoney CSV to ZenMoney CSV.",
+         mixinStandardHelpOptions = true)
 public final class Application implements Callable<Integer> {
 
     private static class BlankColumnsToNullProcessor implements RowProcessor {
@@ -64,13 +65,18 @@ public final class Application implements Callable<Integer> {
     @Spec
     private CommandSpec commandSpec;
 
-    @Option(names = "--input-file", required = true, description = "Path to HomeMoney CSV file being converted.")
+    @Option(names = "--input-file", paramLabel = "<path>", required = true,
+            description = "Path to HomeMoney CSV file being converted.")
     private Path inputFile;
 
-    @Option(names = "--multi-currency-account", description = "Multi-valued option for specifying multi-currency accounts.")
+    @Option(names = "--multi-currency-account", paramLabel = "<account>",
+            description =
+                    "Multi-valued (i.e. may be included several times) option for specifying multi-currency " +
+                            "accounts.")
     private Set<String> multiCurrencyAccount;
 
-    @Option(names = "--output-file", required = true, description = "Path to converted ZenMoney CSV file.")
+    @Option(names = "--output-file", paramLabel = "<path>", required = true,
+            description = "Path to converted ZenMoney CSV file.")
     private Path outputFile;
 
     private int splitOutputBy;
@@ -87,7 +93,8 @@ public final class Application implements Callable<Integer> {
 
             // TODO: implement with: splitOutputBy, multiCurrencyAccount
             try (Writer outputFileWriter = new FileWriter(outputFile.toString())) {
-                StatefulBeanToCsv<ZenMoneyCsvRecord> beanToCsv = new StatefulBeanToCsvBuilder<ZenMoneyCsvRecord>(outputFileWriter).build();
+                StatefulBeanToCsv<ZenMoneyCsvRecord> beanToCsv =
+                        new StatefulBeanToCsvBuilder<ZenMoneyCsvRecord>(outputFileWriter).build();
 
                 HomeMoneyCsvRecord prevTransferRecord = null;
                 for (HomeMoneyCsvRecord record : csvRecords) {
@@ -126,17 +133,14 @@ public final class Application implements Callable<Integer> {
 
     /* PROPERTIES */
 
-    //@formatter:off
-    @Option(names = "--split-output-by", defaultValue = "0",
+    @Option(names = "--split-output-by", paramLabel = "<N>", defaultValue = "0",
             description = {"Split output file into multiple files with <N> lines each.",
-                           "If set as '0' then the output file won't be split."})
-    //@formatter:on
+                    "If omitted or set as '0' then the output file won't be split."})
     protected void setSplitOutputBy(int splitOutputBy) {
         if (splitOutputBy < 0) {
-            //@formatter:off
-            throw new ParameterException(commandSpec.commandLine(), String.format(
-                    "Invalid value '%d' for option '--split-output-by': value is not a natural number.", splitOutputBy));
-            //@formatter:on
+            throw new ParameterException(commandSpec.commandLine(),
+                    String.format("Invalid value '%d' for option '--split-output-by': value is not a natural number.",
+                            splitOutputBy));
         }
 
         this.splitOutputBy = splitOutputBy;

@@ -40,10 +40,12 @@ public final class ZenMoneyCsvRecord extends CsvRecord {
 
     @Override
     public boolean equals(Object obj) {
-        if (this == obj)
+        if (this == obj) {
             return true;
-        if (!(obj instanceof ZenMoneyCsvRecord))
+        }
+        if (!(obj instanceof ZenMoneyCsvRecord)) {
             return false;
+        }
 
         ZenMoneyCsvRecord that = (ZenMoneyCsvRecord) obj;
 
@@ -62,7 +64,8 @@ public final class ZenMoneyCsvRecord extends CsvRecord {
 
     @Override
     public int hashCode() {
-        return Objects.hash(categoryName, comment, date, income, incomeAccountName, incomeCurrencyShortTitle, outcome, outcomeAccountName, outcomeCurrencyShortTitle);
+        return Objects.hash(categoryName, comment, date, income, incomeAccountName, incomeCurrencyShortTitle, outcome,
+                outcomeAccountName, outcomeCurrencyShortTitle);
     }
 
     /* PROPERTIES */
@@ -157,8 +160,7 @@ public final class ZenMoneyCsvRecord extends CsvRecord {
         // @formatter:off
         return date != null && (
                         (income != null && incomeAccountName != null && incomeCurrencyShortTitle != null)
-                     || (outcome != null && outcomeAccountName != null && outcomeCurrencyShortTitle != null)
-        );
+                     || (outcome != null && outcomeAccountName != null && outcomeCurrencyShortTitle != null));
         // @formatter:on
     }
 
