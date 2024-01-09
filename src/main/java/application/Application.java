@@ -9,11 +9,13 @@ import com.opencsv.bean.CsvToBean;
 import com.opencsv.bean.CsvToBeanBuilder;
 import com.opencsv.bean.StatefulBeanToCsv;
 import com.opencsv.bean.StatefulBeanToCsvBuilder;
+import com.opencsv.exceptions.CsvException;
 import com.opencsv.processor.RowProcessor;
 import converter.Converter;
 import model.homemoney.HomeMoneyCsvRecord;
 import model.zenmoney.ZenMoneyCsvRecord;
 import org.apache.commons.io.input.BOMInputStream;
+import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
@@ -32,7 +34,7 @@ import java.io.Writer;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.List;
+import java.util.Iterator;
 import java.util.Set;
 import java.util.concurrent.Callable;
 
@@ -44,8 +46,8 @@ public final class Application implements Callable<Integer> {
 
         public static final int UNHANDLED_EXCEPTION = -1;
         public static final int OK = 0;
-        public static final int UNRECOVERABLE_EXCEPTION = 1;    // provided by picocli
-        public static final int INVALID_OPTIONS = 2;            // provided by picocli
+        public static final int UNRECOVERABLE_EXCEPTION = 1;    // handled by picocli
+        public static final int INVALID_OPTIONS = 2;            // handled by picocli
         public static final int CONVERSION_COMPLETED_WITH_ERRORS = 3;
 
         private ExitCodes() {
@@ -98,46 +100,22 @@ public final class Application implements Callable<Integer> {
 
     @Override
     public Integer call() throws Exception {
-        println("Converting file: " + inputFile.toString());
+        printLine("Converting file: " + inputFile.toString());
 
+        int errorCount;
         try (Reader inputFileReader = newFileReader(inputFile)) {
-            CsvToBean<HomeMoneyCsvRecord> csvBeaner = newCsvBeaner(inputFileReader);
-            List<HomeMoneyCsvRecord> csvRecords = csvBeaner.parse();
-
-            // TODO: implement with: splitOutputBy, multiCurrencyAccount
-            try (Writer outputFileWriter = new FileWriter(outputFile.toString())) {
-                StatefulBeanToCsv<ZenMoneyCsvRecord> beanToCsv =
-                        new StatefulBeanToCsvBuilder<ZenMoneyCsvRecord>(outputFileWriter).build();
-
-                HomeMoneyCsvRecord prevTransferRecord = null;
-                for (HomeMoneyCsvRecord record : csvRecords) {
-                    println("Processing record: " + record.toDisplayString());
-
-                    ZenMoneyCsvRecord converted;
-
-                    if (!record.isTransfer()) {
-                        converted = Converter.convertRecord(record);
-                    } else {
-                        if (prevTransferRecord == null) {
-                            prevTransferRecord = record;
-                            continue;
-                        } else {
-                            converted = Converter.convertRecord(prevTransferRecord, record);
-                            prevTransferRecord = null;
-                        }
-                    }
-
-                    println("Converted record: " + converted.toDisplayString());
-
-                    beanToCsv.write(converted);
-
-                    println("Converted record was written.");
-                }
-            }
+            errorCount = convert(newCsvBeaner(inputFileReader));
         }
 
-        println("Conversion complete.");
-        return ExitCodes.OK;
+        if (errorCount == 0) {
+            printLine("Conversion completed with no errors.");
+
+            return ExitCodes.OK;
+        } else {
+            printLine("Conversion completed with errors. Error count: " + errorCount);
+
+            return ExitCodes.CONVERSION_COMPLETED_WITH_ERRORS;
+        }
     }
 
     public static int run(String[] args) {
@@ -161,11 +139,90 @@ public final class Application implements Callable<Integer> {
 
     /* IMPLEMENTATION */
 
+    // TODO: implement with: splitOutputBy, multiCurrencyAccount
+    private int convert(CsvToBean<HomeMoneyCsvRecord> csvBeaner) throws IOException {
+        Iterator<HomeMoneyCsvRecord> records = csvBeaner.iterator();
+        int recordCount = 0, errorCount = 0;
+
+        try (Writer outputFileWriter = new FileWriter(outputFile.toString())) {
+            StatefulBeanToCsv<ZenMoneyCsvRecord> beanToCsv =
+                    new StatefulBeanToCsvBuilder<ZenMoneyCsvRecord>(outputFileWriter).build();
+
+            HomeMoneyCsvRecord prevTransferRecord = null;
+            while (records.hasNext()) {
+                try {
+                    recordCount++;
+                    HomeMoneyCsvRecord record = records.next();
+
+                    printLine(String.format("Converting record (%06d): %s", recordCount, record.toDisplayString()));
+
+                    if (!record.isValid()) {
+                        printError("Record is not valid, skipping.");
+
+                        errorCount++;
+                        continue;
+                    }
+
+                    /* <CONVERTING> */
+
+                    ZenMoneyCsvRecord converted;
+                    if (!record.isTransfer()) {
+                        converted = Converter.convertRecord(record);
+                    } else {
+                        if (prevTransferRecord == null) {
+                            prevTransferRecord = record;
+                            continue;
+                        } else {
+                            converted = Converter.convertRecord(prevTransferRecord, record);
+                            prevTransferRecord = null;
+                        }
+                    }
+
+                    /* </CONVERTING> */
+
+                    printLine("Converted record: " + converted.toDisplayString());
+
+                    if (!converted.isValid()) {
+                        printError("Converted record is not valid, skipping.");
+
+                        errorCount++;
+                        continue;
+                    }
+
+                    beanToCsv.write(converted);
+                } catch (Exception e) {
+                    printError("Exception while converting record " + recordCount + '.');
+
+                    e.printStackTrace();
+                    errorCount++;
+                }
+            }
+        }
+
+        if (!csvBeaner.getCapturedExceptions().isEmpty()) {
+            printError("Listing all exceptions that occurred during parsing of the input file:");
+
+            for (CsvException e : csvBeaner.getCapturedExceptions()) {
+                printError("Line " + e.getLineNumber() + ": " + e.getMessage() + " | Parsed data: " + ArrayUtils
+                        .toString(e.getLine()));
+            }
+
+            errorCount += csvBeaner.getCapturedExceptions().size();
+        }
+
+        return errorCount;
+    }
+
     private CsvToBean<HomeMoneyCsvRecord> newCsvBeaner(Reader reader) {
         CSVParser csvParser = newCsvParser();
         CSVReader csvReader = newCsvReader(reader, csvParser);
 
-        return new CsvToBeanBuilder<HomeMoneyCsvRecord>(csvReader).withType(HomeMoneyCsvRecord.class).build();
+        //@formatter:off
+        return new CsvToBeanBuilder<HomeMoneyCsvRecord>(csvReader)
+                .withType(HomeMoneyCsvRecord.class)
+                .withThrowExceptions(false)
+                .build();
+        //@formatter:on
     }
 
     private CSVParser newCsvParser() {
@@ -195,7 +252,11 @@ public final class Application implements Callable<Integer> {
         return new BufferedReader(reader);
     }
 
-    private static void println(String line) {
+    private static void printError(String error) {
+        System.err.println(error);
+    }
+
+    private static void printLine(String line) {
         System.out.println(line);
     }
 
