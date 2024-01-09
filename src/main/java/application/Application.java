@@ -40,6 +40,19 @@ import java.util.concurrent.Callable;
          mixinStandardHelpOptions = true)
 public final class Application implements Callable<Integer> {
 
+    public static final class ExitCodes {
+
+        public static final int UNHANDLED_EXCEPTION = -1;
+        public static final int OK = 0;
+        public static final int UNRECOVERABLE_EXCEPTION = 1;    // provided by picocli
+        public static final int INVALID_OPTIONS = 2;            // provided by picocli
+        public static final int CONVERSION_COMPLETED_WITH_ERRORS = 3;
+
+        private ExitCodes() {
+        }
+
+    }
+
     private static class BlankColumnsToNullProcessor implements RowProcessor {
 
         @Override
@@ -85,10 +98,10 @@ public final class Application implements Callable<Integer> {
 
     @Override
     public Integer call() throws Exception {
-        println("Reading file: " + inputFile.toString());
+        println("Converting file: " + inputFile.toString());
 
-        try (Reader inputFileReader = createFileReader(inputFile)) {
-            CsvToBean<HomeMoneyCsvRecord> csvBeaner = createCsvBeaner(inputFileReader);
+        try (Reader inputFileReader = newFileReader(inputFile)) {
+            CsvToBean<HomeMoneyCsvRecord> csvBeaner = newCsvBeaner(inputFileReader);
             List<HomeMoneyCsvRecord> csvRecords = csvBeaner.parse();
 
             // TODO: implement with: splitOutputBy, multiCurrencyAccount
@@ -124,7 +137,7 @@ public final class Application implements Callable<Integer> {
         }
 
         println("Conversion complete.");
-        return 0;
+        return ExitCodes.OK;
     }
 
     public static int run(String[] args) {
@@ -148,14 +161,14 @@ public final class Application implements Callable<Integer> {
 
     /* IMPLEMENTATION */
 
-    private CsvToBean<HomeMoneyCsvRecord> createCsvBeaner(Reader reader) {
-        CSVParser csvParser = createCsvParser();
-        CSVReader csvReader = createCsvReader(reader, csvParser);
+    private CsvToBean<HomeMoneyCsvRecord> newCsvBeaner(Reader reader) {
+        CSVParser csvParser = newCsvParser();
+        CSVReader csvReader = newCsvReader(reader, csvParser);
 
         return new CsvToBeanBuilder<HomeMoneyCsvRecord>(csvReader).withType(HomeMoneyCsvRecord.class).build();
     }
 
-    private CSVParser createCsvParser() {
+    private CSVParser newCsvParser() {
         //@formatter:off
         return new CSVParserBuilder()
                 .withSeparator(';')
@@ -165,7 +178,7 @@ public final class Application implements Callable<Integer> {
         //@formatter:on
     }
 
-    private CSVReader createCsvReader(Reader reader, CSVParser csvParser) {
+    private CSVReader newCsvReader(Reader reader, CSVParser csvParser) {
         //@formatter:off
         return new CSVReaderBuilder(reader)
                 .withCSVParser(csvParser)
@@ -174,7 +187,7 @@ public final class Application implements Callable<Integer> {
         //@formatter:on
     }
 
-    private static Reader createFileReader(Path path) throws IOException {
+    private static Reader newFileReader(Path path) throws IOException {
         InputStream origin = Files.newInputStream(path);
         BOMInputStream inputStream = BOMInputStream.builder().setInputStream(origin).get();
         Reader reader = new InputStreamReader(inputStream, StandardCharsets.UTF_8.newDecoder());
