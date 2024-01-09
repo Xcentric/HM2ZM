@@ -36,6 +36,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Iterator;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.Callable;
 
@@ -89,7 +90,7 @@ public final class Application implements Callable<Integer> {
             description =
                     "Multi-valued (i.e. may be included several times) option for specifying multi-currency " +
                             "accounts.")
-    private Set<String> multiCurrencyAccount;
+    private Set<String> multiCurrencyAccounts = Set.of();
 
     @Option(names = "--output-file", paramLabel = "<path>", required = true,
             description = "Path to converted ZenMoney CSV file.")
@@ -140,18 +141,22 @@ public final class Application implements Callable<Integer> {
 
     /* IMPLEMENTATION */
 
-    // TODO: implement with: splitOutputBy, multiCurrencyAccount
+    // TODO: implement with: multiCurrencyAccount
     private int convert(CsvToBean<HomeMoneyCsvRecord> csvBeaner) throws IOException {
         Iterator<HomeMoneyCsvRecord> records = csvBeaner.iterator();
-        int recordCount = 0, errorCount = 0;
+        Writer outputFileWriter = null;
+        StatefulBeanToCsv<ZenMoneyCsvRecord> beanToCsv = null;
+        int recordCount = 0, errorCount = 0, splitOutputCounter = 0, outputFileOrderNumber = 0;
+        HomeMoneyCsvRecord prevTransferRecord = null;
 
-        try (Writer outputFileWriter = newFileWriter(outputFile, null)) {
-            StatefulBeanToCsv<ZenMoneyCsvRecord> beanToCsv =
-                    new StatefulBeanToCsvBuilder<ZenMoneyCsvRecord>(outputFileWriter).build();
-
-            HomeMoneyCsvRecord prevTransferRecord = null;
+        try {
             while (records.hasNext()) {
                 try {
+                    if (outputFileWriter == null) {
+                        outputFileWriter = newFileWriter(outputFile, recordCount == 0 ? null : ++outputFileOrderNumber);
+                        beanToCsv = new StatefulBeanToCsvBuilder<ZenMoneyCsvRecord>(outputFileWriter).build();
+                    }
+
                     recordCount++;
                     HomeMoneyCsvRecord record = records.next();
 
@@ -170,6 +175,8 @@ public final class Application implements Callable<Integer> {
                     if (!record.isTransfer()) {
                         converted = Converter.convertRecord(record);
                     } else {
+                        printLine("Transfer detected, proceeding to the next record.");
+
                         if (prevTransferRecord == null) {
                             prevTransferRecord = record;
                             continue;
@@ -190,13 +197,27 @@ public final class Application implements Callable<Integer> {
                         continue;
                     }
 
-                    beanToCsv.write(converted);
+                    Objects.requireNonNull(beanToCsv, "beanToCsv").write(converted);
+                    splitOutputCounter++;
+
+                    if (splitOutputBy > 0 && splitOutputCounter >= splitOutputBy) {
+                        printLine("Current output file limit reached, closing.");
+
+                        splitOutputCounter = 0;
+                        outputFileWriter.close();
+                        outputFileWriter = null;
+                        beanToCsv = null;
+                    }
                 } catch (Exception e) {
                     printError("Exception while converting record " + recordCount + '.');
 
                     e.printStackTrace();
                     errorCount++;
                 }
+            }
+        } finally {
+            if (outputFileWriter != null) {
+                outputFileWriter.close();
             }
         }
 

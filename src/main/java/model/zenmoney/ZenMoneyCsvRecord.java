@@ -20,13 +20,13 @@ public final class ZenMoneyCsvRecord extends CsvRecord {
     @CsvBindByName(required = true)
     @CsvDate("yyyy-MM-dd")
     private Date date;
-    @CsvBindByName(locale = "ru-RU")
+    @CsvBindByName
     private BigDecimal income;
     @CsvBindByName
     private String incomeAccountName;
     @CsvBindByName
     private Currency incomeCurrencyShortTitle;
-    @CsvBindByName(locale = "ru-RU")
+    @CsvBindByName
     private BigDecimal outcome;
     @CsvBindByName
     private String outcomeAccountName;
