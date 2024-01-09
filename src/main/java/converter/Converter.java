@@ -3,14 +3,22 @@ package converter;
 import model.homemoney.HomeMoneyCsvRecord;
 import model.zenmoney.ZenMoneyCsvRecord;
 
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
+
 public final class Converter {
 
-    private Converter() {
+    private final Set<String> convertedAccounts = new HashSet<>();
+    private final Set<String> multiCurrencyAccounts;
+
+    public Converter(Set<String> multiCurrencyAccounts) {
+        this.multiCurrencyAccounts = Set.copyOf(multiCurrencyAccounts);
     }
 
     /* INTERFACE */
 
-    public static ZenMoneyCsvRecord convertRecord(HomeMoneyCsvRecord record) {
+    public ZenMoneyCsvRecord convertRecord(HomeMoneyCsvRecord record) {
         if (record == null || record.isTransfer()) {
             throw new IllegalArgumentException("record == " + record);
         }
@@ -23,19 +31,18 @@ public final class Converter {
 
         if (record.getTotal().signum() >= 0) {
             converted.setIncome(record.getTotal());
-            converted.setIncomeAccountName(record.getAccount());
+            converted.setIncomeAccountName(convertAccount(record));
             converted.setIncomeCurrencyShortTitle(record.getCurrency());
         } else {
             converted.setOutcome(record.getTotal().negate());
-            converted.setOutcomeAccountName(record.getAccount());
+            converted.setOutcomeAccountName(convertAccount(record));
             converted.setOutcomeCurrencyShortTitle(record.getCurrency());
         }
 
         return converted;
     }
 
-    public static ZenMoneyCsvRecord convertRecord(HomeMoneyCsvRecord transferRecord1,
-                                                  HomeMoneyCsvRecord transferRecord2) {
+    public ZenMoneyCsvRecord convertRecord(HomeMoneyCsvRecord transferRecord1, HomeMoneyCsvRecord transferRecord2) {
         if (transferRecord1 == null || !transferRecord1.isTransfer() || transferRecord1.getTotal().signum() != -1) {
             throw new IllegalArgumentException("transferRecord1 == " + transferRecord1);
         }
@@ -54,14 +61,33 @@ public final class Converter {
         converted.setDate(transferRecord1.getDate());
 
         converted.setIncome(transferRecord2.getTotal());
-        converted.setIncomeAccountName(transferRecord2.getAccount());
+        converted.setIncomeAccountName(convertAccount(transferRecord2));
         converted.setIncomeCurrencyShortTitle(transferRecord2.getCurrency());
 
         converted.setOutcome(transferRecord1.getTotal().negate());
-        converted.setOutcomeAccountName(transferRecord1.getAccount());
+        converted.setOutcomeAccountName(convertAccount(transferRecord1));
         converted.setOutcomeCurrencyShortTitle(transferRecord1.getCurrency());
 
         return converted;
+    }
+
+    /* PROPERTIES */
+
+    public Set<String> getConvertedAccounts() {
+        return Collections.unmodifiableSet(convertedAccounts);
+    }
+
+    /* IMPLEMENTATION */
+
+    private String convertAccount(HomeMoneyCsvRecord record) {
+        String account = record.getAccount();
+
+        if (multiCurrencyAccounts.contains(account)) {
+            account += " (" + record.getCurrency().getCurrencyCode() + ')';
+        }
+        convertedAccounts.add(account);
+
+        return account;
     }
 
 }

@@ -89,7 +89,7 @@ public final class Application implements Callable<Integer> {
     @Option(names = "--multi-currency-account", paramLabel = "<account>",
             description =
                     "Multi-valued (i.e. may be included several times) option for specifying multi-currency " +
-                            "accounts.")
+                            "accounts. Case-sensitive.")
     private Set<String> multiCurrencyAccounts = Set.of();
 
     @Option(names = "--output-file", paramLabel = "<path>", required = true,
@@ -141,8 +141,8 @@ public final class Application implements Callable<Integer> {
 
     /* IMPLEMENTATION */
 
-    // TODO: implement with: multiCurrencyAccount
     private int convert(CsvToBean<HomeMoneyCsvRecord> csvBeaner) throws IOException {
+        Converter converter = new Converter(multiCurrencyAccounts);
         Iterator<HomeMoneyCsvRecord> records = csvBeaner.iterator();
         Writer outputFileWriter = null;
         StatefulBeanToCsv<ZenMoneyCsvRecord> beanToCsv = null;
@@ -165,6 +165,7 @@ public final class Application implements Callable<Integer> {
                     if (!record.isValid()) {
                         printError("Record is not valid, skipping.");
 
+                        prevTransferRecord = null;  // precaution
                         errorCount++;
                         continue;
                     }
@@ -173,22 +174,22 @@ public final class Application implements Callable<Integer> {
 
                     ZenMoneyCsvRecord converted;
                     if (!record.isTransfer()) {
-                        converted = Converter.convertRecord(record);
+                        converted = converter.convertRecord(record);
                     } else {
-                        printLine("Transfer detected, proceeding to the next record.");
-
                         if (prevTransferRecord == null) {
+                            printLine("Transfer detected, proceeding to the next record.");
+
                             prevTransferRecord = record;
                             continue;
                         } else {
-                            converted = Converter.convertRecord(prevTransferRecord, record);
+                            converted = converter.convertRecord(prevTransferRecord, record);
                             prevTransferRecord = null;
                         }
                     }
 
                     /* </CONVERTING> */
 
-                    printLine("Converted record: " + converted.toDisplayString());
+                    printLine(String.format("Converted  record (%06d): %s", recordCount, converted.toDisplayString()));
 
                     if (!converted.isValid()) {
                         printError("Converted record is not valid, skipping.");
@@ -211,6 +212,7 @@ public final class Application implements Callable<Integer> {
                 } catch (Exception e) {
                     printError("Exception while converting record " + recordCount + '.');
 
+                    prevTransferRecord = null;  // precaution
                     e.printStackTrace();
                     errorCount++;
                 }
@@ -221,8 +223,11 @@ public final class Application implements Callable<Integer> {
             }
         }
 
+        printLine("List of suggested accounts to create at ZenMoney:");
+        converter.getConvertedAccounts().stream().sorted().forEachOrdered(Application::printLine);
+
         if (!csvBeaner.getCapturedExceptions().isEmpty()) {
-            printError("Listing all exceptions that occurred during parsing of the input file:");
+            printError("List of exceptions that occurred during parsing of the input file:");
 
             for (CsvException e : csvBeaner.getCapturedExceptions()) {
                 printError("Line " + e.getLineNumber() + ": " + e.getMessage() + " | Parsed data: " + ArrayUtils
