@@ -157,18 +157,19 @@ public final class ZenMoneyCsvRecord extends CsvRecord {
 
     @Override
     public boolean isValid() {
-        // @formatter:off
-        return date != null && (
-                        (income != null && incomeAccountName != null && incomeCurrencyShortTitle != null)
-                     || (outcome != null && outcomeAccountName != null && outcomeCurrencyShortTitle != null));
-        // @formatter:on
+        //@formatter:off
+        return date != null
+                && (    (income != null && incomeAccountName != null && incomeCurrencyShortTitle != null)
+                     || (outcome != null && outcomeAccountName != null && outcomeCurrencyShortTitle != null))
+                && !Objects.equals(incomeAccountName, outcomeAccountName);
+        //@formatter:on
     }
 
     /* IMPLEMENTATION */
 
     @Override
     protected String toString(ToStringStyle style) {
-        // @formatter:off
+        //@formatter:off
         return new ToStringBuilder(this, style)
                 .append("date", formatDate(date))
                 .append("categoryName", categoryName)
@@ -180,7 +181,7 @@ public final class ZenMoneyCsvRecord extends CsvRecord {
                 .append("income", income)
                 .append("incomeCurrencyShortTitle", incomeCurrencyShortTitle)
                 .toString();
-        // @formatter:on
+        //@formatter:on
     }
 
 }

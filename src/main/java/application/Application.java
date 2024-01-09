@@ -163,7 +163,7 @@ public final class Application implements Callable<Integer> {
                     printLine(String.format("Converting record (%06d): %s", recordCount, record.toDisplayString()));
 
                     if (!record.isValid()) {
-                        printError("Record is not valid, skipping.");
+                        printLine("Record is not valid, skipping.");
 
                         prevTransferRecord = null;  // precaution
                         errorCount++;
@@ -192,7 +192,7 @@ public final class Application implements Callable<Integer> {
                     printLine(String.format("Converted  record (%06d): %s", recordCount, converted.toDisplayString()));
 
                     if (!converted.isValid()) {
-                        printError("Converted record is not valid, skipping.");
+                        printLine("Converted record is not valid, skipping.");
 
                         errorCount++;
                         continue;
