@@ -14,6 +14,7 @@ import com.opencsv.processor.RowProcessor;
 import converter.Converter;
 import model.homemoney.HomeMoneyCsvRecord;
 import model.zenmoney.ZenMoneyCsvRecord;
+import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.io.input.BOMInputStream;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -144,7 +145,7 @@ public final class Application implements Callable<Integer> {
         Iterator<HomeMoneyCsvRecord> records = csvBeaner.iterator();
         int recordCount = 0, errorCount = 0;
 
-        try (Writer outputFileWriter = new FileWriter(outputFile.toString())) {
+        try (Writer outputFileWriter = newFileWriter(outputFile, null)) {
             StatefulBeanToCsv<ZenMoneyCsvRecord> beanToCsv =
                     new StatefulBeanToCsvBuilder<ZenMoneyCsvRecord>(outputFileWriter).build();
 
@@ -250,6 +251,20 @@ public final class Application implements Callable<Integer> {
         Reader reader = new InputStreamReader(inputStream, StandardCharsets.UTF_8.newDecoder());
 
         return new BufferedReader(reader);
+    }
+
+    private static Writer newFileWriter(Path path, Integer suffixNumber) throws IOException {
+        String fileName = path.toString();
+
+        if (suffixNumber != null) {
+            String extension = FilenameUtils.getExtension(fileName);
+            fileName = FilenameUtils.removeExtension(fileName) + suffixNumber;
+            if (StringUtils.isNotEmpty(extension)) {
+                fileName += FilenameUtils.EXTENSION_SEPARATOR + extension;
+            }
+        }
+
+        return new FileWriter(fileName, StandardCharsets.UTF_8);
     }
 
     private static void printError(String error) {
