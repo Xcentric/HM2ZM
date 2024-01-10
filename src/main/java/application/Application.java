@@ -18,6 +18,7 @@ import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.io.input.BOMInputStream;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.Pair;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Model.CommandSpec;
@@ -97,6 +98,14 @@ public final class Application implements Callable<Integer> {
     private Path outputFile;
 
     private int splitOutputBy;
+
+    @Option(names = "--split-transfers-using-category", paramLabel = "<category name>", defaultValue = "<none>",
+            description = {
+                    "Split transfers into two separate transactions (outcome & income) with common category " +
+                            "specified as value for this option.",
+                    "If omitted or not set then transfers won't be split.",
+                    "This option may affect '--split-output-by' option."})
+    private String splitTransfersUsingCategory;
 
     /* INTERFACE */
 
@@ -198,8 +207,18 @@ public final class Application implements Callable<Integer> {
                         continue;
                     }
 
-                    Objects.requireNonNull(beanToCsv, "beanToCsv").write(converted);
-                    splitOutputCounter++;
+                    Objects.requireNonNull(beanToCsv, "beanToCsv"); // shut up linter!
+                    if (!converted.isTransfer() || StringUtils.isEmpty(splitTransfersUsingCategory)) {
+                        beanToCsv.write(converted);
+                        splitOutputCounter++;
+                    } else {
+                        Pair<ZenMoneyCsvRecord, ZenMoneyCsvRecord> transferPair =
+                                converter.splitTransfer(converted, splitTransfersUsingCategory);
+
+                        beanToCsv.write(transferPair.getLeft());
+                        beanToCsv.write(transferPair.getRight());
+                        splitOutputCounter += 2;
+                    }
 
                     if (splitOutputBy > 0 && splitOutputCounter >= splitOutputBy) {
                         printLine("Current output file limit reached, closing.");

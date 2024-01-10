@@ -36,6 +36,18 @@ public final class ZenMoneyCsvRecord extends CsvRecord {
     public ZenMoneyCsvRecord() {
     }
 
+    public ZenMoneyCsvRecord(ZenMoneyCsvRecord other) {
+        this.categoryName = other.categoryName;
+        this.comment = other.comment;
+        this.date = other.date;
+        this.income = other.income;
+        this.incomeAccountName = other.incomeAccountName;
+        this.incomeCurrencyShortTitle = other.incomeCurrencyShortTitle;
+        this.outcome = other.outcome;
+        this.outcomeAccountName = other.outcomeAccountName;
+        this.outcomeCurrencyShortTitle = other.outcomeCurrencyShortTitle;
+    }
+
     /* INTERFACE */
 
     @Override

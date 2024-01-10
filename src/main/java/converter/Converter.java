@@ -2,6 +2,7 @@ package converter;
 
 import model.homemoney.HomeMoneyCsvRecord;
 import model.zenmoney.ZenMoneyCsvRecord;
+import org.apache.commons.lang3.tuple.Pair;
 
 import java.util.Collections;
 import java.util.HashSet;
@@ -69,6 +70,29 @@ public final class Converter {
         converted.setOutcomeCurrencyShortTitle(transferRecord1.getCurrency());
 
         return converted;
+    }
+
+    public Pair<ZenMoneyCsvRecord, ZenMoneyCsvRecord> splitTransfer(ZenMoneyCsvRecord transferRecord,
+            String commonCategoryName) {
+        if (transferRecord == null || !transferRecord.isTransfer()) {
+            throw new IllegalArgumentException("transferRecord == " + transferRecord);
+        }
+
+        ZenMoneyCsvRecord record1 = new ZenMoneyCsvRecord(transferRecord);
+        ZenMoneyCsvRecord record2 = new ZenMoneyCsvRecord(transferRecord);
+
+        record1.setCategoryName(commonCategoryName);
+        record2.setCategoryName(commonCategoryName);
+
+        record1.setIncome(null);
+        record1.setIncomeAccountName(null);
+        record1.setIncomeCurrencyShortTitle(null);
+
+        record2.setOutcome(null);
+        record2.setOutcomeAccountName(null);
+        record2.setOutcomeCurrencyShortTitle(null);
+
+        return Pair.of(record1, record2);
     }
 
     /* PROPERTIES */
