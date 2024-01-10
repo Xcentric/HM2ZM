@@ -5,12 +5,15 @@ import model.zenmoney.ZenMoneyCsvRecord;
 import org.apache.commons.lang3.tuple.Pair;
 
 import java.util.Collections;
+import java.util.Currency;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 
 public final class Converter {
 
-    private final Set<String> convertedAccounts = new HashSet<>();
+    private final Map<String, Set<Currency>> convertedAccounts = new HashMap<>();
     private final Set<String> multiCurrencyAccounts;
 
     public Converter(Set<String> multiCurrencyAccounts) {
@@ -97,8 +100,12 @@ public final class Converter {
 
     /* PROPERTIES */
 
-    public Set<String> getConvertedAccounts() {
-        return Collections.unmodifiableSet(convertedAccounts);
+    public Map<String, Set<Currency>> getConvertedAccounts() {
+        Map<String, Set<Currency>> result = new HashMap<>(convertedAccounts.size());
+
+        convertedAccounts.forEach((account, currencies) -> result.put(account, Set.copyOf(currencies)));
+
+        return Collections.unmodifiableMap(result);
     }
 
     /* IMPLEMENTATION */
@@ -109,7 +116,7 @@ public final class Converter {
         if (multiCurrencyAccounts.contains(account)) {
             account += " (" + record.getCurrency().getCurrencyCode() + ')';
         }
-        convertedAccounts.add(account);
+        convertedAccounts.computeIfAbsent(account, (key) -> new HashSet<>()).add(record.getCurrency());
 
         return account;
     }

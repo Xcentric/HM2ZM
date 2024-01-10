@@ -36,12 +36,16 @@ import java.io.Writer;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Currency;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.Callable;
+import java.util.stream.Collectors;
 
 @Command(name = "HM2ZM", version = "HM2ZM v1.0", description = "Convert HomeMoney CSV to ZenMoney CSV.",
          mixinStandardHelpOptions = true)
@@ -247,8 +251,18 @@ public final class Application implements Callable<Integer> {
             }
         }
 
-        printLine("List of suggested accounts to create at ZenMoney:");
-        converter.getConvertedAccounts().stream().sorted().forEachOrdered(Application::printLine);
+        Map<String, Set<Currency>> convertedAccounts = converter.getConvertedAccounts();
+        if (!convertedAccounts.isEmpty()) {
+            printLine("List of suggested accounts to create at ZenMoney (followed by their currencies):");
+
+            convertedAccounts.entrySet().stream().sorted(Entry.comparingByKey()).forEachOrdered(e -> {
+                String account = e.getKey();
+                String currencies =
+                        e.getValue().stream().map(Currency::getCurrencyCode).sorted().collect(Collectors.joining(", "));
+
+                printLine(account + ": " + currencies);
+            });
+        }
 
         if (!csvBeaner.getCapturedExceptions().isEmpty()) {
             printError("List of exceptions that occurred during parsing of the input file:");
