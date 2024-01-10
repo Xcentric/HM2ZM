@@ -37,6 +37,8 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.Callable;
@@ -153,6 +155,7 @@ public final class Application implements Callable<Integer> {
     private int convert(CsvToBean<HomeMoneyCsvRecord> csvBeaner) throws IOException {
         Converter converter = new Converter(multiCurrencyAccounts);
         Iterator<HomeMoneyCsvRecord> records = csvBeaner.iterator();
+        List<String> invalidRecords = new LinkedList<>();
         Writer outputFileWriter = null;
         StatefulBeanToCsv<ZenMoneyCsvRecord> beanToCsv = null;
         int recordCount = 0, errorCount = 0, splitOutputCounter = 0, outputFileOrderNumber = 0;
@@ -174,6 +177,7 @@ public final class Application implements Callable<Integer> {
                     if (!record.isValid()) {
                         printLine("Record is not valid, skipping.");
 
+                        invalidRecords.add("Record " + recordCount + ": " + record.toDisplayString());
                         prevTransferRecord = null;  // precaution
                         errorCount++;
                         continue;
@@ -203,6 +207,7 @@ public final class Application implements Callable<Integer> {
                     if (!converted.isValid()) {
                         printLine("Converted record is not valid, skipping.");
 
+                        invalidRecords.add("Record " + recordCount + ": " + converted.toDisplayString());
                         errorCount++;
                         continue;
                     }
@@ -254,6 +259,12 @@ public final class Application implements Callable<Integer> {
             }
 
             errorCount += csvBeaner.getCapturedExceptions().size();
+        }
+
+        if (!invalidRecords.isEmpty()) {
+            printError("List of invalid records found during conversion:");
+
+            invalidRecords.forEach(Application::printError);
         }
 
         return errorCount;
